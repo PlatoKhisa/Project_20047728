@@ -1,0 +1,77 @@
+#loading important packages
+library(modelsummary)
+library(fixest)
+library(ggplot2)
+library(pastecs)
+library(Hmisc)
+library(lmtest)
+
+#loading the data
+
+final_combined<- read.csv(file='combined.csv')
+attach(final_combined)
+
+#plotting the covid statistics
+covid_plot<- ggplot(final_combined, aes(Week, new_cases, colour= factor(Country))) +geom_point()+geom_path() +xlim(84,104)
+covid_plot
+
+
+
+#run the multivariate model without any fixed effects
+did_model<- feols(sdstreams~CountryDummy+AfterDummy+ CountryDummy:AfterDummy, data= final_combined)
+summary(did_model)
+
+
+
+#run the multivariate model with having country and week as fixed effects
+did_model2<-feols(sdstreams~CountryDummy+AfterDummy+ Country:AfterDummy|Week, data= final_combined)
+summary(did_model2)
+
+
+#run multivariate model with lockdown, restriction and covid stat as control variables
+did_model3<-feols(sdstreams~CountryDummy+AfterDummy+Lockdown+ Restriction+ CountryDummy:AfterDummy, data= final_combined)
+summary(did_model3)
+#run multivariate model with lockdown, restriction and covid stat as control variables having no fixed effects
+did_model4<- feols(sdstreams~CountryDummy+AfterDummy+Lockdown+ Restriction+ CountryDummy:AfterDummy|Week, data= final_combined)
+summary(did_model4)
+
+
+#using mobility indicators to model music streaming
+
+#importing the mobility data file
+mobility_combined <- read.csv('mobility_data_combined_2.csv')
+
+#correlation matrix
+mb<- mobility_combined[c(5,6:11)]
+correlation_matrix <- rcorr(as.matrix(mb))
+correlation_matrix$P
+
+#retail_and_recreatio
+mb_1<- lm(Sdstreams~retail_and_recreation+Lockdown+ Restrictions, data=mobility_combined)
+summary(mb_1)
+bptest(mb_1)
+
+#grocery_and_pharmacy
+mb_2<- lm(Sdstreams~grocery_and_pharmacy+Lockdown+Restrictions, data=mobility_combined)
+summary(mb_2)
+bptest(mb_2)
+
+#parks
+mb_3<- lm(Sdstreams~transit_stations+Lockdown+Restrictions, data=mobility_combined)
+summary(mb_3)
+
+
+#transit_stations
+#parks
+mb_4<- lm(Sdstreams~parks+Lockdown+Restrictions, data=mobility_combined)
+summary(mb_4)
+
+
+
+#workplaces
+mb_5<- lm(Sdstreams~workplaces+Lockdown+Restrictions, data=mobility_combined)
+summary(mb_5)
+
+#residential
+mb_6<- lm(Sdstreams~residential+Lockdown+Restrictions, data=mobility_combined)
+summary(mb_6)

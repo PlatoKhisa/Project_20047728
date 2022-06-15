@@ -1,0 +1,8 @@
+#variable sdstreams in weeklystreaming_hk/_sg.csv files
+
+variable sdstreams is created by dividing the total weekly streaming in each 
+week by average total weekly streaming from May 2018 to June 2020, then 
+multiplying the quotient by 100. 
+
+#the operations are done in Excel 
+ 

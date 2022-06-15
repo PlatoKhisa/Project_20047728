@@ -1,0 +1,104 @@
+#most of the lines in this file are taken from https://rpubs.com/argdata/web_scraping
+
+#import necessary libraries
+library(rvest)
+library(tidyverse)
+library(magrittr)
+library(scales)
+library(knitr)
+library(lubridate)
+library(ggrepel)
+
+#create a fix URL
+
+url <- 'https://spotifycharts.com/regional/se/weekly/'
+
+#define the date range in a sequence
+
+timevalues <- seq(as.Date("2018/06/01"), as.Date("2020/5/29"), by = "week")
+
+head(timevalues);tail(timevalues)
+
+#Create a function to concatenate the fix constant + the sequence of dates:
+
+concat.url<- function(x){
+ full_url <- paste0(url, x,'--',x+7)
+ full_url
+}
+
+#run the function
+
+finalurl <- concat.url(timevalues)
+head(finalurl, n=2);tail(finalurl, n=2)
+
+
+#create a function that reads HTML and extracks HTML nodes
+
+SpotifyScrape <- function(x){
+  page <- x
+  rank <- page %>%
+    read_html() %>% #Reads an HTML page
+    html_nodes('.chart-table-position') %>% #RVEST.PKG: extract pieces out of HTML docs. using XPath & css selectors.
+    html_text() %>% #RVEST.PKG:Extract attributes, text and tag name from html
+    as.data.frame()
+  track <- page %>% 
+    read_html() %>% 
+    html_nodes('strong') %>% 
+    html_text() %>% 
+    as.data.frame()
+  artist <- page %>% 
+    read_html() %>% 
+    html_nodes('.chart-table-track span') %>% 
+    html_text() %>% 
+    as.data.frame()
+  streams <- page %>% 
+    read_html() %>% 
+    html_nodes('td.chart-table-streams') %>% 
+    html_text() %>% 
+    as.data.frame()
+  dates <- page %>% 
+    read_html() %>% 
+    html_nodes('.responsive-select~ .responsive-select+ .responsive-select .responsive-select-value') %>%
+    html_text() %>% 
+    as.data.frame()
+
+#combine, name, and make it a tibble
+  chart <- cbind(rank, track, artist, streams, dates) #Combine R Objects by Columns
+  names(chart) <- c("Rank", "Track", "Artist", "Streams", "Date") #Functions to get or set the names of an object
+  chart <- as.tibble(chart)#TIBBLE.PKG:turns an existing object into a so-called tibble
+ return(chart) 
+}
+ 
+#scrape
+
+spotify_sg<- map_df(finalurl, SpotifyScrape) 
+saveRDS(spotify_sg, "spotifyRAW_sg.rds")
+
+
+spotify_sg<- readRDS("spotifyRAW_sg.rds")
+dim(spotify_sg)
+
+
+#data cleaning
+
+spotify_sg %<>% 
+  mutate( Artist = gsub("by ", "", Artist), #gsub perform replacement of the first and all matches respectively
+          Streams = gsub(",", "", Streams), 
+          Streams = as.numeric(Streams), 
+          Date = as.Date(spotify_sg$Date, "%m/%d/%Y"),
+          WeekDay = wday(Date, label = TRUE),#LUBRIDATE.PKG:Get days component of a date-time
+          Month = month(Date, label = TRUE)
+          ) %>% 
+  print()
+  
+
+#Aggregating the streaming data for each week
+
+
+total_streams_sg<- aggregate(Streams ~ Date, spotify_sg, sum)
+total_streams_sg %<>%
+  mutate(Week= cut.Date(Date, breaks='1 week', labels=FALSE))%<>%
+  arrange(Date)
+
+#exporting the aggregated data into a csv file  
+write.csv(total_streams_sg, 'weeklystreams_sg.csv')

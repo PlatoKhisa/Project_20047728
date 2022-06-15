@@ -1,0 +1,30 @@
+#import necessary libraries
+library(dplyr)
+library(ggplot2)
+library(magrittr)
+
+#loading the data
+
+sg_data <- read.csv(file='weeklystreams_sg.csv')
+hk_data <- read.csv(file='weeklystreams_hk.csv')
+
+#plotting standardized stream data to observe the streaming trend between Hongkong and Singapore
+parallel_trend <- ggplot()+
+geom_line(data=sg_data, aes(Week, sdstreams,group=1),color='green')+
+geom_line(data=hk_data, aes(Week, sdstreams,group=1),color='red')+
+geom_vline(data=sg_data,aes(xintercept= 93))+
+labs(x='Number of week', y='Percentage')
+
+parallel_trend
+
+
+#merging the streaming data into a single dataframe
+
+combined_data <- rbind(sg_data, hk_data)
+combined_data %<>%
+  mutate(Country= ifelse(row_number()>105, 'HK', 'SG'))
+typeof(combined_data$Date)
+
+write.csv(combined_data, 'combined.csv')
+
+
